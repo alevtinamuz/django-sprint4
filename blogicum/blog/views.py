@@ -1,21 +1,19 @@
-from django.shortcuts import redirect, get_object_or_404
-from django.utils import timezone
 from django.contrib.auth import get_user_model
-from django.db.models import Count
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.views.generic import (
-    ListView, DetailView, UpdateView, CreateView, DeleteView
-)
-from django.db.models import Q
 from django.core.paginator import Paginator
+from django.db.models import Count, Q
+from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
+from django.utils import timezone
+from django.views.generic import (
+    CreateView, DeleteView, DetailView, ListView, UpdateView
+)
 
 from .constants import ITEMS_PER_PAGE
-from .models import Post, Category, Comment
 from .forms import CommentForm, PostForm
+from .models import Post, Category, Comment
 
 User = get_user_model()
-
 
 def get_published_posts(queryset=None):
     if queryset is None:
@@ -61,7 +59,7 @@ class IndexListView(ListView):
 class PostDetailView(DetailView):
     model = Post
     template_name = 'blog/detail.html'
-    
+
     def get_queryset(self):
         posts = Post.objects.select_related('category', 'location', 'author')
         if self.request.user.is_authenticated:
@@ -177,7 +175,7 @@ class PostUpdateView(
     pk_url_kwarg = 'post_id'
 
 
-class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin,  DeleteView):
+class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin, DeleteView):
     model = Post
     template_name = 'blog/create.html'
     pk_url_kwarg = 'post_id'

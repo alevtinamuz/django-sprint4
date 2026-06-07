@@ -1,7 +1,6 @@
 from django import forms
-from django.core.mail import send_mail
 
-from .models import Post, Comment, User
+from .models import Post, Comment
 
 
 class PostForm(forms.ModelForm):

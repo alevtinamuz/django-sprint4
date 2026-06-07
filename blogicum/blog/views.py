@@ -15,6 +15,7 @@ from .models import Post, Category, Comment
 
 User = get_user_model()
 
+
 def get_published_posts(queryset=None):
     if queryset is None:
         queryset = Post.objects

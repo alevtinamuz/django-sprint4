@@ -221,7 +221,6 @@ class CommentUpdateView(
     pk_url_kwarg = 'comment_id'
 
 
-
 class CommentDeleteView(
     LoginRequiredMixin,
     OnlyAuthorMixin,
@@ -230,4 +229,3 @@ class CommentDeleteView(
     BaseCommentMixin
 ):
     pk_url_kwarg = 'comment_id'
-

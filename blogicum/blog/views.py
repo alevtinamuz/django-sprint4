@@ -67,7 +67,7 @@ class SuccessUrlToPostMixin:
         )
 
 
-class IndexListView(ListView, BasePostMixin):
+class IndexListView(BasePostMixin, ListView):
     template_name = 'blog/index.html'
     paginate_by = ITEMS_PER_PAGE
 
@@ -75,7 +75,7 @@ class IndexListView(ListView, BasePostMixin):
         return annotate_posts(get_published_posts())
 
 
-class PostDetailView(DetailView, BasePostMixin):
+class PostDetailView(BasePostMixin, DetailView):
     template_name = 'blog/detail.html'
 
     def get_queryset(self):
@@ -104,7 +104,7 @@ class PostDetailView(DetailView, BasePostMixin):
         return context
 
 
-class CategoryPostsListView(ListView, BasePostMixin):
+class CategoryPostsListView(BasePostMixin, ListView):
     template_name = 'blog/category.html'
     paginate_by = ITEMS_PER_PAGE
 
@@ -124,7 +124,7 @@ class CategoryPostsListView(ListView, BasePostMixin):
         return context
 
 
-class ProfileDetailView(DetailView, BaseUserMixin):
+class ProfileDetailView(BaseUserMixin, DetailView):
     template_name = 'blog/profile.html'
     paginate_by = ITEMS_PER_PAGE
 
@@ -146,7 +146,7 @@ class ProfileDetailView(DetailView, BaseUserMixin):
         return context
 
 
-class ProfileUpdateView(LoginRequiredMixin, UpdateView, BaseUserMixin):
+class ProfileUpdateView(LoginRequiredMixin, BaseUserMixin, UpdateView):
     template_name = 'blog/user.html'
     fields = ('first_name', 'last_name', 'email', 'username',)
 
@@ -160,7 +160,7 @@ class ProfileUpdateView(LoginRequiredMixin, UpdateView, BaseUserMixin):
         )
 
 
-class PostCreateView(LoginRequiredMixin, CreateView, BasePostMixin):
+class PostCreateView(LoginRequiredMixin, BasePostMixin, CreateView):
     form_class = PostForm
     template_name = 'blog/create.html'
 
@@ -179,8 +179,8 @@ class PostUpdateView(
     LoginRequiredMixin,
     OnlyAuthorMixin,
     SuccessUrlToPostMixin,
+    BasePostMixin,
     UpdateView,
-    BasePostMixin
 ):
     template_name = 'blog/create.html'
     form_class = PostForm
@@ -188,7 +188,7 @@ class PostUpdateView(
 
 
 class PostDeleteView(
-    LoginRequiredMixin, OnlyAuthorMixin, DeleteView, BasePostMixin
+    LoginRequiredMixin, OnlyAuthorMixin, BasePostMixin, DeleteView
 ):
     template_name = 'blog/create.html'
     pk_url_kwarg = 'post_id'
@@ -198,8 +198,8 @@ class PostDeleteView(
 class CommentCreateView(
     LoginRequiredMixin,
     SuccessUrlToPostMixin,
-    CreateView,
-    BaseCommentMixin
+    BaseCommentMixin,
+    CreateView
 ):
     form_class = CommentForm
 
@@ -214,8 +214,8 @@ class CommentUpdateView(
     LoginRequiredMixin,
     OnlyAuthorMixin,
     SuccessUrlToPostMixin,
-    UpdateView,
-    BaseCommentMixin
+    BaseCommentMixin,
+    UpdateView
 ):
     form_class = CommentForm
     pk_url_kwarg = 'comment_id'
@@ -225,7 +225,7 @@ class CommentDeleteView(
     LoginRequiredMixin,
     OnlyAuthorMixin,
     SuccessUrlToPostMixin,
-    DeleteView,
-    BaseCommentMixin
+    BaseCommentMixin,
+    DeleteView
 ):
     pk_url_kwarg = 'comment_id'

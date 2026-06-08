@@ -3,7 +3,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.shortcuts import redirect, get_object_or_404
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.generic import (
     CreateView, DeleteView, DetailView, ListView, UpdateView
@@ -26,6 +26,27 @@ def get_published_posts(queryset=None):
     ).select_related('category', 'location', 'author')
 
 
+def annotate_posts(queryset):
+    return queryset.annotate(
+        comment_count=Count('comments')
+    ).order_by('-pub_date')
+
+
+class BaseUserMixin:
+    model = User
+    slug_field = 'username'
+    slug_url_kwarg = 'username'
+
+
+class BasePostMixin:
+    model = Post
+
+
+class BaseCommentMixin:
+    model = Comment
+    template_name = 'blog/comment.html'
+
+
 class OnlyAuthorMixin(UserPassesTestMixin):
 
     def test_func(self):
@@ -40,25 +61,21 @@ class OnlyAuthorMixin(UserPassesTestMixin):
 
 class SuccessUrlToPostMixin:
     def get_success_url(self):
-        return reverse_lazy(
+        return reverse(
             'blog:post_detail',
             kwargs={'pk': self.kwargs['post_id']}
         )
 
 
-class IndexListView(ListView):
-    model = Post
+class IndexListView(ListView, BasePostMixin):
     template_name = 'blog/index.html'
     paginate_by = ITEMS_PER_PAGE
 
     def get_queryset(self):
-        return get_published_posts().annotate(
-            comment_count=Count('comments')
-        ).order_by('-pub_date')
+        return annotate_posts(get_published_posts())
 
 
-class PostDetailView(DetailView):
-    model = Post
+class PostDetailView(DetailView, BasePostMixin):
     template_name = 'blog/detail.html'
 
     def get_queryset(self):
@@ -87,8 +104,7 @@ class PostDetailView(DetailView):
         return context
 
 
-class CategoryPostsListView(ListView):
-    model = Post
+class CategoryPostsListView(ListView, BasePostMixin):
     template_name = 'blog/category.html'
     paginate_by = ITEMS_PER_PAGE
 
@@ -98,9 +114,9 @@ class CategoryPostsListView(ListView):
             slug=self.kwargs['category_slug'],
             is_published=True
         )
-        return get_published_posts(
-            self.category.posts.all()
-        ).annotate(comment_count=Count('comments')).order_by('-pub_date')
+        return annotate_posts(
+            get_published_posts(self.category.posts.all())
+        )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -108,11 +124,8 @@ class CategoryPostsListView(ListView):
         return context
 
 
-class ProfileDetailView(DetailView):
-    model = User
+class ProfileDetailView(DetailView, BaseUserMixin):
     template_name = 'blog/profile.html'
-    slug_field = 'username'
-    slug_url_kwarg = 'username'
     paginate_by = ITEMS_PER_PAGE
 
     def get_object(self):
@@ -120,39 +133,34 @@ class ProfileDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        profile = self.object
-        context['profile'] = profile
-        if self.request.user == profile:
-            posts = Post.objects.filter(author=profile)
+        context['profile'] = self.object
+        if self.request.user == self.object:
+            posts = self.object.posts.all()
         else:
-            posts = get_published_posts(Post.objects.filter(author=profile))
-        posts = posts.annotate(
-            comment_count=Count('comments')
-        ).order_by('-pub_date')
+            posts = get_published_posts(
+                self.object.posts.all()
+            )
+        posts = annotate_posts(posts)
         paginator = Paginator(posts, self.paginate_by)
         context['page_obj'] = paginator.get_page(self.request.GET.get('page'))
         return context
 
 
-class ProfileUpdateView(LoginRequiredMixin, UpdateView):
-    model = User
+class ProfileUpdateView(LoginRequiredMixin, UpdateView, BaseUserMixin):
     template_name = 'blog/user.html'
     fields = ('first_name', 'last_name', 'email', 'username',)
-    slug_field = 'username'
-    slug_url_kwarg = 'username'
 
     def get_object(self):
         return get_object_or_404(User, username=self.kwargs['username'])
 
     def get_success_url(self):
-        return reverse_lazy(
+        return reverse(
             'blog:profile',
             kwargs={'username': self.object.username}
         )
 
 
-class PostCreateView(LoginRequiredMixin, CreateView):
-    model = Post
+class PostCreateView(LoginRequiredMixin, CreateView, BasePostMixin):
     form_class = PostForm
     template_name = 'blog/create.html'
 
@@ -161,34 +169,39 @@ class PostCreateView(LoginRequiredMixin, CreateView):
         return super().form_valid(form)
 
     def get_success_url(self):
-        return reverse_lazy(
+        return reverse(
             'blog:profile',
             kwargs={'username': self.request.user.username}
         )
 
 
 class PostUpdateView(
-    LoginRequiredMixin, OnlyAuthorMixin, SuccessUrlToPostMixin, UpdateView
+    LoginRequiredMixin,
+    OnlyAuthorMixin,
+    SuccessUrlToPostMixin,
+    UpdateView,
+    BasePostMixin
 ):
-    model = Post
-    form_class = PostForm
     template_name = 'blog/create.html'
+    form_class = PostForm
     pk_url_kwarg = 'post_id'
 
 
-class PostDeleteView(LoginRequiredMixin, OnlyAuthorMixin, DeleteView):
-    model = Post
+class PostDeleteView(
+    LoginRequiredMixin, OnlyAuthorMixin, DeleteView, BasePostMixin
+):
     template_name = 'blog/create.html'
     pk_url_kwarg = 'post_id'
     success_url = reverse_lazy('blog:index')
 
 
 class CommentCreateView(
-    LoginRequiredMixin, SuccessUrlToPostMixin, CreateView
+    LoginRequiredMixin,
+    SuccessUrlToPostMixin,
+    CreateView,
+    BaseCommentMixin
 ):
-    model = Comment
     form_class = CommentForm
-    template_name = 'blog/comment.html'
 
     def form_valid(self, form):
         post = get_object_or_404(Post, pk=self.kwargs['post_id'])
@@ -198,17 +211,23 @@ class CommentCreateView(
 
 
 class CommentUpdateView(
-    LoginRequiredMixin, OnlyAuthorMixin, SuccessUrlToPostMixin, UpdateView
+    LoginRequiredMixin,
+    OnlyAuthorMixin,
+    SuccessUrlToPostMixin,
+    UpdateView,
+    BaseCommentMixin
 ):
-    model = Comment
     form_class = CommentForm
-    template_name = 'blog/comment.html'
     pk_url_kwarg = 'comment_id'
+
 
 
 class CommentDeleteView(
-    LoginRequiredMixin, OnlyAuthorMixin, SuccessUrlToPostMixin, DeleteView
+    LoginRequiredMixin,
+    OnlyAuthorMixin,
+    SuccessUrlToPostMixin,
+    DeleteView,
+    BaseCommentMixin
 ):
-    model = Comment
-    template_name = 'blog/comment.html'
     pk_url_kwarg = 'comment_id'
+

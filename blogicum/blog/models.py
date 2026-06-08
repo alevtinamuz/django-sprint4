@@ -7,15 +7,21 @@ from .constants import MAX_LENGTH
 User = get_user_model()
 
 
-class BaseModel(models.Model):
+class TimeStampedModel(models.Model):
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Добавлено'
+    )
+
+    class Meta:
+        abstract = True
+
+
+class BaseModel(TimeStampedModel):
     is_published = models.BooleanField(
         default=True,
         verbose_name='Опубликовано',
         help_text='Снимите галочку, чтобы скрыть публикацию.'
-    )
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-        verbose_name='Добавлено'
     )
 
     class Meta:
@@ -99,7 +105,7 @@ class Location(BaseModel):
         return self.name
 
 
-class Comment(models.Model):
+class Comment(TimeStampedModel):
     post = models.ForeignKey(
         Post,
         on_delete=models.CASCADE,
@@ -111,7 +117,6 @@ class Comment(models.Model):
         verbose_name='Автор комментария'
     )
     text = models.TextField('Текст комментария')
-    created_at = models.DateTimeField('Добавлено', auto_now_add=True)
 
     class Meta:
         ordering = ['created_at']
